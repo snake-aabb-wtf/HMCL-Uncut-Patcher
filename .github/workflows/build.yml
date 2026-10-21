@@ -1,0 +1,65 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 配置 Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.8.0'
+
+      - name: 构建
+        run: gradle fatJar --no-daemon
+
+      - name: 端到端自检
+        run: |
+          set -e
+          curl -fsSL -o hmcl.jar https://github.com/HMCL-dev/HMCL/releases/download/v3.17.0.362/HMCL-3.17.0.362.jar
+          echo "官方 jar：$(sha256sum hmcl.jar)"
+          java -jar build/dist/HMCL-Uncut-Patcher.jar hmcl.jar -o hmcl-uncut.jar
+          mkdir -p verify
+          (cd verify && jar xf ../hmcl-uncut.jar org/jackhuang/hmcl/util/RegionUtils.class)
+          javap -p -c verify/org/jackhuang/hmcl/util/RegionUtils.class \
+            | grep -A3 'isIsChinaMainlandNetwork' | grep -q iconst_0
+          echo "字节码检查通过"
+          if java -jar build/dist/HMCL-Uncut-Patcher.jar hmcl-uncut.jar -o never.jar; then
+            echo "已打过补丁的文件没有被拒绝"; exit 1
+          fi
+          echo "重复补丁拒绝测试通过"
+
+      - name: 生成校验和
+        run: |
+          set -e
+          cp build/dist/HMCL-Uncut-Patcher.jar .
+          sha256sum HMCL-Uncut-Patcher.jar > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: HMCL-Uncut-Patcher
+          path: |
+            HMCL-Uncut-Patcher.jar
+            SHA256SUMS.txt
+          archive: false
+          if-no-files-found: error
