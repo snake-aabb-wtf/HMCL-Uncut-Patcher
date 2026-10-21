@@ -4,6 +4,8 @@
 
 它直接修改官方发布的 HMCL 程序文件，把「中国大陆地区禁用下载」这道门禁改成恒不生效。**不重新编译、不改源码、不修改你选中的原文件**，输出一份新文件。
 
+![图形界面](docs/gui.png)
+
 <br/>
 
 ## 支持的文件
@@ -21,11 +23,29 @@
 
 ## 下载
 
-到 [Releases](../../releases/latest) 下载 `HMCL-Uncut-Patcher.jar`（约 2.9 MB），需要 Java 17 或更高。
+到 [Releases](../../releases/latest) 下载 `HMCL-Uncut-Patcher.jar`（约 3.0 MB），需要 Java 17 或更高。
 
 <br/>
 
 ## 用法
+
+### 图形界面
+
+```bash
+java -jar HMCL-Uncut-Patcher.jar
+```
+
+不带参数启动就是窗口：选文件（或者直接把文件拖进窗口）→ 点「开始打补丁」。输出默认放在原文件旁边，文件名加 `-uncut`；成功后可以直接打开所在文件夹。
+
+如果系统已经关联了 `.jar`，双击也能打开。想让窗口一打开就预选某个文件：
+
+```bash
+java -jar HMCL-Uncut-Patcher.jar --gui D:\下载\HMCL-3.17.0.362.exe
+```
+
+界面上还有「仅检查」，只验证文件能不能打补丁，不写出任何东西。
+
+### 命令行
 
 ```bash
 java -jar HMCL-Uncut-Patcher.jar HMCL-3.17.0.362.exe
@@ -39,6 +59,8 @@ java -jar HMCL-Uncut-Patcher.jar HMCL-3.17.0.362.exe
 java -jar HMCL-Uncut-Patcher.jar HMCL-3.17.0.362.jar -o D:\out\HMCL-uncut.jar
 java -jar HMCL-Uncut-Patcher.jar HMCL-3.17.0.362.deb --check
 ```
+
+**带参数就是命令行，不带参数（或 `--gui`）就是图形界面，两者是同一个 jar，行为完全一致。**
 
 <br/>
 
@@ -69,6 +91,7 @@ public static boolean isIsChinaMainlandNetwork() {
 - 打完之后重新读取整个文件，确认目标方法确实是 `iconst_0 / ireturn` 才写出
 - 引导程序（exe 的 PE 头 / sh 的脚本）**逐字节保留**，只替换后面内嵌的 jar
 - 不联网、不写注册表、不需要管理员权限
+- 图形界面和命令行走的是同一套补丁代码，没有第二份实现
 
 <br/>
 
@@ -91,7 +114,7 @@ public static boolean isIsChinaMainlandNetwork() {
 # 产物：build/dist/HMCL-Uncut-Patcher.jar
 ```
 
-推送到 `main` 会触发 [`.github/workflows/build.yml`](.github/workflows/build.yml)，在 Ubuntu 上构建并上传可执行 jar。
+推送到 `main` 会触发 [`.github/workflows/build.yml`](.github/workflows/build.yml)，在 Ubuntu 上构建、跑启动模式检查与端到端自检，然后上传可执行 jar。
 
 <br/>
 

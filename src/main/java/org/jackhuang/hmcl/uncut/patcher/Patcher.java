@@ -1,6 +1,7 @@
 package org.jackhuang.hmcl.uncut.patcher;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
@@ -13,6 +14,28 @@ public final class Patcher {
     }
 
     private Patcher() {
+    }
+
+    /** 给人看的格式描述，CLI 与 GUI 共用。 */
+    public static String describe(Result result) {
+        return switch (result.kind()) {
+            case "jar" -> "jar";
+            case "exe" -> "Windows 自解压 exe（内嵌 jar 偏移 " + result.zipBase() + "）";
+            case "sh" -> "类 Unix 自解压 sh（内嵌 jar 偏移 " + result.zipBase() + "）";
+            case "deb" -> "Debian 包（内嵌自解压 sh）";
+            default -> result.kind();
+        };
+    }
+
+    /** 默认输出路径：同目录下的 -uncut 副本。 */
+    public static Path defaultOutput(Path input) {
+        String fileName = input.getFileName().toString();
+        int dot = fileName.lastIndexOf('.');
+        String target = dot > 0
+                ? fileName.substring(0, dot) + "-uncut" + fileName.substring(dot)
+                : fileName + "-uncut";
+        Path parent = input.toAbsolutePath().getParent();
+        return parent == null ? Path.of(target) : parent.resolve(target);
     }
 
     public static Result patch(byte[] input, Consumer<String> log) throws Exception {

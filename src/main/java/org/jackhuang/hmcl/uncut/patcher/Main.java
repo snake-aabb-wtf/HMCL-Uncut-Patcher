@@ -1,20 +1,64 @@
 package org.jackhuang.hmcl.uncut.patcher;
 
+import java.awt.GraphicsEnvironment;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 public final class Main {
-    private static final String VERSION = "1.0.0";
+    static final String VERSION = "1.1.0";
 
     private Main() {
     }
 
     public static void main(String[] args) {
+        List<String> rest = new ArrayList<>();
+        boolean gui = false;
+        for (String arg : args) {
+            if ("--gui".equals(arg)) {
+                gui = true;
+            } else {
+                rest.add(arg);
+            }
+        }
+
+        if (gui) {
+            launchGui(rest);
+            return;
+        }
+        if (args.length == 0 && !GraphicsEnvironment.isHeadless()) {
+            Gui.launch(null);
+            return;
+        }
         System.exit(run(args));
     }
 
-    static int run(String[] args) {
+    private static void launchGui(List<String> rest) {
+        if (rest.size() > 1) {
+            System.err.println("图形界面模式只接受一个文件参数");
+            System.exit(2);
+        }
+        if (GraphicsEnvironment.isHeadless()) {
+            System.err.println("当前环境没有图形界面，请改用命令行模式：");
+            usage();
+            System.exit(2);
+        }
+        Path preset = null;
+        if (!rest.isEmpty()) {
+            try {
+                preset = Path.of(rest.get(0));
+            } catch (Exception e) {
+                System.err.println("无效的路径：" + rest.get(0));
+                System.exit(2);
+                return;
+            }
+        }
+        Gui.launch(preset);
+    }
+
+    private static int run(String[] args) {
         Path input = null;
         Path output = null;
         boolean check = false;
@@ -63,7 +107,7 @@ public final class Main {
             Consumer<String> log = line -> System.out.println("  " + line);
             Patcher.Result result = Patcher.patch(data, log);
 
-            System.out.println("格式：" + describe(result));
+            System.out.println("格式：" + Patcher.describe(result));
             if (result.version() != null) {
                 System.out.println("版本：" + result.version());
             }
@@ -75,7 +119,7 @@ public final class Main {
                 return 0;
             }
 
-            Path target = output != null ? output : defaultOutput(input);
+            Path target = output != null ? output : Patcher.defaultOutput(input);
             Files.write(target, result.data());
             System.out.println("输出：" + target);
             System.out.println("大小：" + result.data().length + " 字节");
@@ -90,39 +134,23 @@ public final class Main {
         }
     }
 
-    private static String describe(Patcher.Result result) {
-        return switch (result.kind()) {
-            case "jar" -> "jar";
-            case "exe" -> "Windows 自解压 exe（内嵌 jar 偏移 " + result.zipBase() + "）";
-            case "sh" -> "类 Unix 自解压 sh（内嵌 jar 偏移 " + result.zipBase() + "）";
-            case "deb" -> "Debian 包（内嵌自解压 sh）";
-            default -> result.kind();
-        };
-    }
-
-    private static Path defaultOutput(Path input) {
-        String fileName = input.getFileName().toString();
-        int dot = fileName.lastIndexOf('.');
-        String target = dot > 0
-                ? fileName.substring(0, dot) + "-uncut" + fileName.substring(dot)
-                : fileName + "-uncut";
-        Path parent = input.toAbsolutePath().getParent();
-        return parent == null ? Path.of(target) : parent.resolve(target);
-    }
-
     private static void usage() {
         System.out.println("""
                 HMCL-Uncut-Patcher %s
-                
-                用法：
+
+                图形界面（也可以直接双击 jar）：
+                  java -jar HMCL-Uncut-Patcher.jar
+                  java -jar HMCL-Uncut-Patcher.jar --gui [要预选的文件]
+
+                命令行：
                   java -jar HMCL-Uncut-Patcher.jar <输入文件> [-o 输出文件] [--check]
-                
+
                 支持：
                   HMCL-*.jar    通用 jar
                   HMCL-*.exe    Windows 自解压程序
                   HMCL-*.sh     Linux / macOS 自解压脚本
                   HMCL-*.deb    Debian / Ubuntu 安装包
-                
+
                 说明：
                   只修改内嵌 jar 里的 org/jackhuang/hmcl/util/RegionUtils.class，
                   把 isIsChinaMainlandNetwork() 改成恒返回 false，其余内容原样保留。

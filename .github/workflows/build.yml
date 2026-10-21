@@ -31,18 +31,37 @@ jobs:
       - name: 构建
         run: gradle fatJar --no-daemon
 
+      - name: 启动模式自检
+        run: |
+          set -e
+          jar=build/dist/HMCL-Uncut-Patcher.jar
+          java -jar "$jar" --version | grep -Eq '^HMCL-Uncut-Patcher [0-9]+\.[0-9]+\.[0-9]+$'
+          echo "版本输出正常"
+          if java -Djava.awt.headless=true -jar "$jar" > noargs.log 2>&1; then
+            echo "无图形界面时不应该进入 GUI"; cat noargs.log; exit 1
+          fi
+          grep -q '用法' noargs.log
+          echo "无参数 + 无界面：回退到用法提示"
+          if java -Djava.awt.headless=true -jar "$jar" --gui > gui.log 2>&1; then
+            echo "--gui 在无图形界面时应当失败"; exit 1
+          fi
+          grep -q '没有图形界面' gui.log
+          echo "--gui + 无界面：明确报错"
+          echo "启动模式自检通过"
+
       - name: 端到端自检
         run: |
           set -e
+          jar=build/dist/HMCL-Uncut-Patcher.jar
           curl -fsSL -o hmcl.jar https://github.com/HMCL-dev/HMCL/releases/download/v3.17.0.362/HMCL-3.17.0.362.jar
           echo "官方 jar：$(sha256sum hmcl.jar)"
-          java -jar build/dist/HMCL-Uncut-Patcher.jar hmcl.jar -o hmcl-uncut.jar
+          java -jar "$jar" hmcl.jar -o hmcl-uncut.jar
           mkdir -p verify
           (cd verify && jar xf ../hmcl-uncut.jar org/jackhuang/hmcl/util/RegionUtils.class)
           javap -p -c verify/org/jackhuang/hmcl/util/RegionUtils.class \
             | grep -A3 'isIsChinaMainlandNetwork' | grep -q iconst_0
           echo "字节码检查通过"
-          if java -jar build/dist/HMCL-Uncut-Patcher.jar hmcl-uncut.jar -o never.jar; then
+          if java -jar "$jar" hmcl-uncut.jar -o never.jar; then
             echo "已打过补丁的文件没有被拒绝"; exit 1
           fi
           echo "重复补丁拒绝测试通过"
