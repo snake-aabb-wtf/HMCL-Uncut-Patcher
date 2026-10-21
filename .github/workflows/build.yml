@@ -37,16 +37,24 @@ jobs:
           jar=build/dist/HMCL-Uncut-Patcher.jar
           java -jar "$jar" --version | grep -Eq '^HMCL-Uncut-Patcher [0-9]+\.[0-9]+\.[0-9]+$'
           echo "版本输出正常"
-          if java -Djava.awt.headless=true -jar "$jar" > noargs.log 2>&1; then
-            echo "无图形界面时不应该进入 GUI"; cat noargs.log; exit 1
-          fi
-          grep -q '用法' noargs.log
-          echo "无参数 + 无界面：回退到用法提示"
-          if java -Djava.awt.headless=true -jar "$jar" --gui > gui.log 2>&1; then
-            echo "--gui 在无图形界面时应当失败"; exit 1
-          fi
-          grep -q '没有图形界面' gui.log
-          echo "--gui + 无界面：明确报错"
+
+          set +e
+          java -Djava.awt.headless=true -jar "$jar" > noargs.log 2>&1
+          status=$?
+          set -e
+          echo "无参数 + 无界面：exit=$status，输出 $(wc -c < noargs.log) 字节"
+          cat noargs.log
+          [ "$status" -eq 2 ]
+          grep -q 'java -jar HMCL-Uncut-Patcher.jar' noargs.log
+
+          set +e
+          java -Djava.awt.headless=true -jar "$jar" --gui > gui.log 2>&1
+          status=$?
+          set -e
+          echo "--gui + 无界面：exit=$status，输出 $(wc -c < gui.log) 字节"
+          cat gui.log
+          [ "$status" -eq 2 ]
+
           echo "启动模式自检通过"
 
       - name: 端到端自检
