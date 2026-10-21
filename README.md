@@ -19,6 +19,12 @@
 
 <br/>
 
+## 下载
+
+到 [Releases](../../releases/latest) 下载 `HMCL-Uncut-Patcher.jar`（约 2.9 MB），需要 Java 17 或更高。
+
+<br/>
+
 ## 用法
 
 ```bash
